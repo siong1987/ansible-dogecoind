@@ -2,20 +2,25 @@
 - name: Update
   apt: update_cache=yes
 
+- name: Upgrade dist
+  apt: upgrade=dist
+
 - name: Upgrade full
   apt: upgrade=full
 
 - name: Install dependencies to prep for dogecoind
   apt: pkg={{item}} state=installed update-cache=yes
   with_items:
-    - ntp
-    - git
     - build-essential
     - libssl-dev
-    - libdb-dev
-    - libdb++-dev 
-    - libqrencode-dev
-    - libboost1.48-all-dev
+    - libboost-all-dev
+    - libdb5.1++-dev
+    - libboost1.53-all-dev
+    - git-arch
+    - libtool
+    - pkg-config
+    - autotools-dev
+    - autoconf
 
 - name: Create swap space
   command: dd if=/dev/zero of=/extraswap bs=1M count=512
@@ -37,13 +42,22 @@
 - name: Checkout dogecoin
   git: repo=https://github.com/dogecoin/dogecoin
        dest=/tmp/dogecoin
-       version=master-1.6
+       version=1.7-dev
+
+- name: Autogen dogecoind
+  command: chdir=/tmp/dogecoin ./autogen.sh
+
+- name: Configure dogecoind
+  command: chdir=/tmp/dogecoin ./configure --with-incompatible-bdb
 
 - name: Build dogecoind
-  command: chdir=/tmp/dogecoin/src make -j2 -f makefile.unix USE_UPNP=- creates=/usr/local/bin/dogecoind
+  command: chdir=/tmp/dogecoin make
 
 - name: Move dogcoind to /usr/local/bin
   command: cp /tmp/dogecoin/src/dogecoind /usr/local/bin/dogecoind creates=/usr/local/bin/dogecoind
+
+- name: Move dogcoin-cli to /usr/local/bin
+  command: cp /tmp/dogecoin/src/dogecoin-cli /usr/local/bin/dogecoin-cli creates=/usr/local/bin/dogecoin-cli
 
 - name: Setup ~/.dogecoin
   shell: mkdir ~/.dogecoin creates=~/.dogecoin/dogecoin.conf
